@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Key Watcher</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:      #08090d;
+      --surface: #0d0f1a;
+      --card:    #11131e;
+      --border:  #1e2235;
+      --text:    #f0f2ff;
+      --dim:     #5a6080;
+      --accent:  #4fc3f7;
+      --live:    #22c55e;
+      --invalid: #ef4444;
+      --quota:   #f59e0b;
+      --down:    #f97316;
+      --unknown: #5a6080;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 24px 20px 60px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 32px;
+    }
+    header img {
+      width: 38px;
+      height: 38px;
+      object-fit: contain;
+      border-radius: 8px;
+    }
+    header .titles h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    header .titles p {
+      font-size: 0.78rem;
+      color: var(--dim);
+      margin-top: 2px;
+    }
+    header .actions {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .btn {
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .btn:hover { border-color: var(--accent); background: #151829; }
+    .btn:active { background: #1a1f30; }
+    .btn.checking { opacity: 0.6; pointer-events: none; }
+
+    .system-banner {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 18px;
+      margin-bottom: 28px;
+      font-size: 0.85rem;
+    }
+    .system-banner .dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .system-banner .label { font-weight: 600; }
+    .system-banner .sub { color: var(--dim); margin-left: 4px; }
+    .system-banner .next-check { margin-left: auto; color: var(--dim); font-size: 0.78rem; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--provider-color, var(--border));
+      border-radius: 14px 14px 0 0;
+    }
+    .card:hover { border-color: #2a2f45; }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .provider-info .name {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    .provider-info .model {
+      font-size: 0.75rem;
+      color: var(--dim);
+      margin-top: 2px;
+    }
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border: 1px solid transparent;
+    }
+    .status-badge .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+    }
+    .badge-live    { background: rgba(34,197,94,0.12); border-color: rgba(34,197,94,0.3); color: #4ade80; }
+    .badge-invalid { background: rgba(239,68,68,0.12); border-color: rgba(239,68,68,0.3); color: #f87171; }
+    .badge-quota   { background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.3); color: #fbbf24; }
+    .badge-provider_down { background: rgba(249,115,22,0.12); border-color: rgba(249,115,22,0.3); color: #fb923c; }
+    .badge-timeout, .badge-unreachable, .badge-error { background: rgba(239,68,68,0.12); border-color: rgba(239,68,68,0.3); color: #f87171; }
+    .badge-no_key  { background: rgba(90,96,128,0.12); border-color: rgba(90,96,128,0.3); color: var(--dim); }
+    .badge-unknown { background: rgba(90,96,128,0.12); border-color: rgba(90,96,128,0.3); color: var(--dim); }
+
+    .dot-live    { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+    .dot-invalid, .dot-timeout, .dot-unreachable, .dot-error { background: #ef4444; box-shadow: 0 0 6px #ef4444; }
+    .dot-quota   { background: #f59e0b; box-shadow: 0 0 6px #f59e0b; }
+    .dot-provider_down { background: #f97316; }
+    .dot-no_key, .dot-unknown { background: var(--dim); }
+
+    .meta {
+      display: flex;
+      gap: 18px;
+      margin-bottom: 14px;
+    }
+    .meta-item { font-size: 0.75rem; color: var(--dim); }
+    .meta-item span { color: var(--text); font-weight: 500; }
+
+    .error-text {
+      font-size: 0.72rem;
+      color: #f87171;
+      background: rgba(239,68,68,0.07);
+      border: 1px solid rgba(239,68,68,0.15);
+      border-radius: 6px;
+      padding: 7px 10px;
+      margin-bottom: 14px;
+      word-break: break-all;
+      line-height: 1.5;
+    }
+
+    .history-label {
+      font-size: 0.7rem;
+      color: var(--dim);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .history-dots {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+    .history-dots .h-dot {
+      width: 9px; height: 9px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .h-dot-live    { background: #22c55e; }
+    .h-dot-invalid, .h-dot-timeout, .h-dot-unreachable, .h-dot-error { background: #ef4444; }
+    .h-dot-quota   { background: #f59e0b; }
+    .h-dot-provider_down { background: #f97316; }
+    .h-dot-no_key, .h-dot-unknown { background: var(--dim); }
+
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+    .check-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--dim);
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .check-btn:hover { border-color: var(--accent); color: var(--text); }
+    .check-btn:active { background: var(--surface); }
+
+    .last-checked {
+      font-size: 0.72rem;
+      color: var(--dim);
+    }
+
+    .loading-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(8,9,13,0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 14px;
+      backdrop-filter: blur(2px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    .loading-overlay.active { opacity: 1; pointer-events: all; }
+    .spinner {
+      width: 22px; height: 22px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .refresh-label {
+      font-size: 0.72rem;
+      color: var(--dim);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <img src="/static/logo.png" alt="logo" onerror="this.style.display='none'">
+  <div class="titles">
+    <h1>Key Watcher</h1>
+    <p>API key health monitor — checks every 5 min</p>
+  </div>
+  <div class="actions">
+    <span class="refresh-label" id="refreshLabel">Auto-refresh: 30s</span>
+    <button class="btn" id="checkAllBtn" onclick="checkAll()">Check All Now</button>
+  </div>
+</header>
+
+<div class="system-banner" id="systemBanner">
+  <div class="dot" id="systemDot"></div>
+  <span class="label" id="systemLabel">Loading...</span>
+  <span class="sub" id="systemSub"></span>
+  <span class="next-check" id="nextCheck"></span>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<script>
+const PROVIDERS = {{ providers | tojson }};
+let countdown = 30;
+let countdownTimer;
+let statusData = {};
+
+function statusColor(s) {
+  const map = { live: '#22c55e', invalid: '#ef4444', quota: '#f59e0b',
+    provider_down: '#f97316', timeout: '#ef4444', unreachable: '#ef4444',
+    error: '#ef4444', no_key: '#5a6080', unknown: '#5a6080' };
+  return map[s] || '#5a6080';
+}
+
+function statusLabel(s) {
+  const map = { live: 'Live', invalid: 'Invalid Key', quota: 'Quota Exhausted',
+    provider_down: 'Provider Down', timeout: 'Timeout', unreachable: 'Unreachable',
+    error: 'Error', no_key: 'No Key', unknown: 'Checking…' };
+  return map[s] || s;
+}
+
+function timeAgo(iso) {
+  if (!iso) return 'Never';
+  const diff = Math.floor((Date.now() - new Date(iso + 'Z').getTime()) / 1000);
+  if (diff < 5) return 'Just now';
+  if (diff < 60) return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+  return `${Math.floor(diff/3600)}h ago`;
+}
+
+function renderCard(pid, data) {
+  const cfg = PROVIDERS[pid];
+  const latest = data.latest;
+  const status = latest ? latest.status : 'unknown';
+  const history = data.history || [];
+  const color = cfg.color;
+
+  const historyDots = history.map(s =>
+    `<div class="h-dot h-dot-${s}" title="${statusLabel(s)}"></div>`
+  ).join('');
+
+  const errorHtml = (latest && latest.error && status !== 'live')
+    ? `<div class="error-text">${escHtml(latest.error)}</div>` : '';
+
+  const latencyHtml = (latest && latest.latency_ms && status === 'live')
+    ? `<div class="meta-item">Latency <span>${latest.latency_ms}ms</span></div>` : '';
+
+  const checkedAt = latest ? latest.checked_at : null;
+
+  return `
+    <div class="card" id="card-${pid}" style="--provider-color: ${color}">
+      <div class="loading-overlay" id="overlay-${pid}"><div class="spinner"></div></div>
+      <div class="card-header">
+        <div class="provider-info">
+          <div class="name">${escHtml(cfg.name)}</div>
+          <div class="model">${escHtml(cfg.model)}</div>
+        </div>
+        <div class="status-badge badge-${status}">
+          <div class="dot dot-${status}"></div>
+          ${statusLabel(status)}
+        </div>
+      </div>
+      <div class="meta">
+        ${latencyHtml}
+        ${latest && latest.status_code ? `<div class="meta-item">HTTP <span>${latest.status_code}</span></div>` : ''}
+      </div>
+      ${errorHtml}
+      ${history.length > 0 ? `
+        <div class="history-label">Last ${history.length} checks</div>
+        <div class="history-dots">${historyDots}</div>
+      ` : ''}
+      <div class="card-footer">
+        <button class="check-btn" onclick="checkOne('${pid}')">Check Now</button>
+        <div class="last-checked" id="ts-${pid}">${checkedAt ? timeAgo(checkedAt) : 'Never'}</div>
+      </div>
+    </div>
+  `;
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function updateBanner(data) {
+  const statuses = Object.values(data).map(d => d.latest ? d.latest.status : 'unknown');
+  const allLive = statuses.every(s => s === 'live');
+  const anyDown = statuses.some(s => ['invalid','quota','provider_down','timeout','unreachable','error'].includes(s));
+  const liveCount = statuses.filter(s => s === 'live').length;
+  const total = statuses.length;
+
+  const dot = document.getElementById('systemDot');
+  const label = document.getElementById('systemLabel');
+  const sub = document.getElementById('systemSub');
+
+  if (allLive) {
+    dot.style.background = '#22c55e';
+    dot.style.boxShadow = '0 0 8px #22c55e';
+    label.textContent = 'All Systems Live';
+    sub.textContent = `— ${total}/${total} keys healthy`;
+  } else if (anyDown) {
+    dot.style.background = '#ef4444';
+    dot.style.boxShadow = '0 0 8px #ef4444';
+    label.textContent = liveCount === 0 ? 'All Keys Down' : 'Degraded';
+    sub.textContent = `— ${liveCount}/${total} keys healthy`;
+  } else {
+    dot.style.background = '#5a6080';
+    dot.style.boxShadow = 'none';
+    label.textContent = 'Initializing';
+    sub.textContent = '';
+  }
+}
+
+function updateTimestamps(data) {
+  for (const pid in data) {
+    const el = document.getElementById(`ts-${pid}`);
+    const latest = data[pid].latest;
+    if (el && latest) el.textContent = timeAgo(latest.checked_at);
+  }
+}
+
+async function loadStatus() {
+  try {
+    const r = await fetch('/api/status');
+    statusData = await r.json();
+    const grid = document.getElementById('grid');
+    grid.innerHTML = Object.keys(PROVIDERS).map(pid => renderCard(pid, statusData[pid] || {})).join('');
+    updateBanner(statusData);
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+async function checkOne(pid) {
+  const overlay = document.getElementById(`overlay-${pid}`);
+  if (overlay) overlay.classList.add('active');
+  try {
+    await fetch(`/api/check/${pid}`, { method: 'POST' });
+    await loadStatus();
+  } finally {
+    if (overlay) overlay.classList.remove('active');
+  }
+}
+
+async function checkAll() {
+  const btn = document.getElementById('checkAllBtn');
+  btn.textContent = 'Checking...';
+  btn.classList.add('checking');
+  document.querySelectorAll('.loading-overlay').forEach(o => o.classList.add('active'));
+  try {
+    await fetch('/api/check/all', { method: 'POST' });
+    await loadStatus();
+  } finally {
+    btn.textContent = 'Check All Now';
+    btn.classList.remove('checking');
+    document.querySelectorAll('.loading-overlay').forEach(o => o.classList.remove('active'));
+  }
+  resetCountdown();
+}
+
+function resetCountdown() {
+  countdown = 30;
+  updateCountdownLabel();
+}
+
+function updateCountdownLabel() {
+  document.getElementById('refreshLabel').textContent = `Auto-refresh: ${countdown}s`;
+}
+
+function startCountdown() {
+  clearInterval(countdownTimer);
+  countdown = 30;
+  countdownTimer = setInterval(async () => {
+    countdown--;
+    updateCountdownLabel();
+    updateTimestamps(statusData);
+    if (countdown <= 0) {
+      await loadStatus();
+      countdown = 30;
+    }
+  }, 1000);
+}
+
+loadStatus().then(() => startCountdown());
+</script>
+</body>
+</html>
