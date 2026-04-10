@@ -133,6 +133,18 @@
       color: var(--dim);
       margin-top: 2px;
     }
+    .provider-info .group-tag {
+      display: inline-block;
+      font-size: 0.65rem;
+      color: var(--dim);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
     .status-badge {
       display: flex;
       align-items: center;
@@ -340,6 +352,7 @@ function renderCard(pid, data) {
         <div class="provider-info">
           <div class="name">${escHtml(cfg.name)}</div>
           <div class="model">${escHtml(cfg.model)}</div>
+          ${data.group ? `<div class="group-tag">${escHtml(data.group)}</div>` : ''}
         </div>
         <div class="status-badge badge-${status}">
           <div class="dot dot-${status}"></div>
