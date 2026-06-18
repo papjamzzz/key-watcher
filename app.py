@@ -365,4 +365,5 @@ if __name__ == "__main__":
     init_db()
     t = threading.Thread(target=background_loop, daemon=True)
     t.start()
-    app.run(host="127.0.0.1", port=5563, debug=False)
+    PORT = int(os.getenv("PORT", "5563"))
+    app.run(host="0.0.0.0", port=PORT, debug=False)
