@@ -366,4 +366,5 @@ if __name__ == "__main__":
     t = threading.Thread(target=background_loop, daemon=True)
     t.start()
     PORT = int(os.getenv("PORT", "5563"))
-    app.run(host="0.0.0.0", port=PORT, debug=False)
+    HOST = os.getenv("HOST", "127.0.0.1")
+    app.run(host=HOST, port=PORT, debug=False)
